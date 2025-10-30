@@ -59,6 +59,16 @@ jobs:
             angle/tools
           key: ${{ runner.os }}-src-cache-${{ env.ANGLE_Branch }}-${{ matrix.arch }}
 
+      - name: Install Debugging Tools for Windows (x86 only)
+        if: matrix.arch == 'x86'
+        shell: pwsh
+        run: |
+          # Download and install Windows SDK with Debugging Tools
+          $url = "https://go.microsoft.com/fwlink/?linkid=2196127"
+          $installer = "$env:TEMP\winsdksetup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -FilePath $installer -ArgumentList "/quiet", "/features", "OptionId.WindowsDesktopDebuggers" -Wait
+
       - name: Sync source
         working-directory: angle
         shell: bash
@@ -83,6 +93,14 @@ jobs:
         shell: pwsh
         # git diff --patch > chromium-7151.patch
         run: Move-Item -Path "BUILD.gn" -Destination "angle/" -Force
+
+      - name: Patch BUILD.gn for x86 (skip DLL copying)
+        if: matrix.arch == 'x86'
+        working-directory: angle
+        shell: bash
+        run: |
+          # Comment out the copy_compiler_dll dependency for x86 builds
+          sed -i 's/    deps += \[ ":copy_compiler_dll" \]/    # deps += [ ":copy_compiler_dll" ] # Disabled for x86/' BUILD.gn
 
       - name: Build ANGLE
         working-directory: angle
