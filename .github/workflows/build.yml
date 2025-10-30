@@ -5,6 +5,7 @@ on:
       - ".github/workflows/**"
       - ".github/actions/**"
       - "args.gn"
+      - "args-x86.gn"
       - "BUILD.gn"
       - "patch/**"
 env:
@@ -17,17 +18,26 @@ jobs:
       id-token: write
       attestations: write
       contents: write
+    strategy:
+      matrix:
+        arch: [x64, x86]
 
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          arch: ${{ matrix.arch }}
 
       - name: Create Dir
         shell: bash
         run: |
           mkdir -p angle
           mkdir -p $BuildDir
-          mv args.gn $BuildDir
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            cp args-x86.gn $BuildDir/args.gn
+          else
+            cp args.gn $BuildDir/args.gn
+          fi
 
       - name: Fetch source
         working-directory: angle
@@ -47,7 +57,7 @@ jobs:
             angle/buildtools
             angle/third_party
             angle/tools
-          key: ${{ runner.os }}-src-cache-${{ env.ANGLE_Branch }}
+          key: ${{ runner.os }}-src-cache-${{ env.ANGLE_Branch }}-${{ matrix.arch }}
 
       - name: Sync source
         working-directory: angle
