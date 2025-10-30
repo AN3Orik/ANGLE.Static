@@ -24,8 +24,11 @@ windows_sdk_version = "10.0.26100.0"
 # Target x86 architecture
 target_cpu = "x86"
 
-# Disable copying debugger DLLs to avoid x86 debugging tools requirement
-copy_dbghelp_dll = false
+# Disable copying of all DLLs to avoid x86 debugging tools requirement
+copy_dlls = false
+
+# Disable Windows toolchain setup to avoid debugging tools requirement
+win_use_custom_toolchain = false
 
 # Additional settings for stable x86 build
 enable_dsyms = false
