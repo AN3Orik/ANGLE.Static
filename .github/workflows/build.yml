@@ -94,13 +94,38 @@ jobs:
         # git diff --patch > chromium-7151.patch
         run: Move-Item -Path "BUILD.gn" -Destination "angle/" -Force
 
-      - name: Patch BUILD.gn for x86 (skip DLL copying)
+      - name: Patch vs_toolchain.py for x86 (skip debugger DLL)
         if: matrix.arch == 'x86'
         working-directory: angle
         shell: bash
         run: |
-          # Comment out the copy_compiler_dll dependency for x86 builds
-          sed -i 's/    deps += \[ ":copy_compiler_dll" \]/    # deps += [ ":copy_compiler_dll" ] # Disabled for x86/' BUILD.gn
+          # Create a backup and patch vs_toolchain.py to skip debugger DLL check for x86
+          cp build/vs_toolchain.py build/vs_toolchain.py.bak
+          # Replace the _CopyDebugger function to just return without copying
+          cat > build/vs_toolchain_patch.py << 'EOF'
+          import sys
+          import re
+          
+          with open('build/vs_toolchain.py', 'r') as f:
+              content = f.read()
+          
+          # Replace the _CopyDebugger function to just return for x86
+          pattern = r'def _CopyDebugger\(target_dir, target_cpu\):\s*.*?(?=\ndef\s|\nclass\s|\n[a-zA-Z_]|\Z)'
+          replacement = '''def _CopyDebugger(target_dir, target_cpu):
+            """Copy debugger (dbghelp.dll) to the output directory - patched for x86."""
+            if target_cpu == 'x86':
+              print('Skipping debugger DLL copy for x86 architecture')
+              return
+            # Original code would go here, but we skip it entirely
+            return'''
+          
+          content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+          
+          with open('build/vs_toolchain.py', 'w') as f:
+              f.write(content)
+          EOF
+          
+          python build/vs_toolchain_patch.py
 
       - name: Build ANGLE
         working-directory: angle
